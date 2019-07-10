@@ -1,0 +1,78 @@
+#Reference Link - https://github.com/odewahn/jupyterhub-on-gcloud
+
+#Install kubectl plugin
+gcloud components install kubectl
+
+#Create a Kubernetes cluster
+gcloud container clusters create notebook-test --num-nodes=3 --machine-type=n1-highmem-2    --zone=us-central1-b
+
+#confirm your cluster is running 
+kubectl get node
+
+#Install brew
+sudo apt-get install build-essential curl git m4 ruby texinfo libbz2-dev libcurl4-openssl-dev libexpat-dev libncurses-dev zlib1g-dev
+
+sudo apt install linuxbrew-wrapper
+
+#Set up Helm
+brew install kubernetes-helm
+
+helm init
+
+#Prepare an initial JupyterHub config file
+openssl rand -hex 32 
+ac85bb54a28448ea183a010fb14a0e51f9f7bac668249d0fa209b3426c756df8
+
+openssl rand -hex 32
+3d3b51ac7442608dce15345c8b8d31081c3aa719644dbb773497ab891e94f0ce
+
+sudo nano config.yaml
+
+==================================
+
+hub:
+  cookieSecret: "b85e9538b93761f2336025a3d5696cc237ee26c8115979d90b86b08b0c326957"
+proxy:
+  secretToken: "f13056563eafb75ab062020dadef8c941b18f69da623e8af58554c06c585881a"
+
+=====================================
+
+
+#Install JupyterHub with Helm
+
+helm repo add jupyterhub https://jupyterhub.github.io/helm-chart/
+
+helm repo update
+
+
+
+kubectl create serviceaccount tiller --namespace kube-system
+
+tiller-clusterrolebinding.yaml
+--------------------
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: tiller-clusterrolebinding
+subjects:
+- kind: ServiceAccount
+  name: tiller
+  namespace: kube-system
+roleRef:
+  kind: ClusterRole
+  name: cluster-admin
+  apiGroup: ""
+----------------
+
+kubectl create -f tiller-clusterrolebinding.yaml
+
+helm init --service-account tiller --upgrade
+
+helm ls
+
+helm install jupyterhub/jupyterhub --version=0.8.2 --name=jupyterhub-test --namespace=jupyterhub-test -f config.yaml
+
+
+#external IP field will be populated and the JupyterHub app is available
+ kubectl --namespace=jupyterhub-test get svc proxy-public
+
